@@ -16,7 +16,7 @@ contract Ownable {
 
     address private _owner;
 
-    constructor() {
+    constructor () internal {
         _owner = msg.sender;
     }
 
@@ -24,8 +24,6 @@ contract Ownable {
         require(_owner == msg.sender);
         _;
     }
-
-
 
     function transferOwnership(address newOwner) public onlyOwner {
         // TODO add functionality to transfer control of the contract to a newOwner.
@@ -46,8 +44,7 @@ contract Ownable {
 //  4) create 'whenNotPaused' & 'paused' modifier that throws in the appropriate situation
 //  5) create a Paused & Unpaused event that emits the address that triggered the event
 
-contract ERC165 is Ownable {
-
+contract Pausable is Ownable {
     bool private _paused;
 
     modifier whenNotPaused {
@@ -70,13 +67,17 @@ contract ERC165 is Ownable {
         emit Unpaused();
     }
 
-    constructor() {
+    constructor () internal {
         _paused = false;
     }
 
     event Paused();
 
     event Unpaused();
+    
+}
+
+contract ERC165 is Ownable {
 
     bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
     /*
@@ -249,9 +250,11 @@ contract ERC721 is Pausable, ERC165 {
 
         // TODO revert if given tokenId already exists or given address is invalid
         require(!_exists(tokenId));
+        require(to != address(0));
   
         // TODO mint tokenId to given address & increase token count of owner
         _tokenOwner[tokenId] = to;
+        _ownedTokensCount[to].increment();
 
         // TODO emit Transfer event
         emit Transfer(msg.sender, to, tokenId);
@@ -531,7 +534,7 @@ contract ERC721Metadata is ERC721Enumerable, usingOraclize {
         // see https://github.com/oraclize/ethereum-api/blob/master/oraclizeAPI_0.5.sol for strConcat()
     // require the token exists before setting
 
-    function setTokenURI(uint256 tokenId, string memory tokenURI) internal {
+    function setTokenURI(uint256 tokenId) internal {
         require(_exists(tokenId));
         _tokenURIs[tokenId] = strConcat(_baseTokenURI, uint2str(tokenId));
     }
@@ -547,16 +550,11 @@ contract ERC721Metadata is ERC721Enumerable, usingOraclize {
 //      -returns a true boolean upon completion of the function
 //      -calls the superclass mint and setTokenURI functions
 
-contract CustomERC721Token is ERC721Metadata {
-    constructor(string memory name, string memory symbol, string memory baseTokenURI) public ERC721Metadata(name, symbol, baseTokenURI) {
-        super(name, symbol, baseTokenURI = "https://s3-us-west-2.amazonaws.com/udacity-blockchain/capstone/");
-    }
-    
-    function mint(address to, uint256 tokenId, string memory tokenURI) public returns (bool) {
-        require(msg.sender == owner, "Only the contract owner can mint tokens");
-        require(!_exists(tokenId), "Token already exists");
+
+contract CustomERC721Token is ERC721Metadata("PropertyToken", "PT", "https://s3-us-west-2.amazonaws.com/udacity-blockchain/capstone/") {
+    function mint(address to, uint tokenId) public onlyOwner returns (bool) {
         _mint(to, tokenId);
-        setTokenURI(tokenId, tokenURI);
+        setTokenURI(tokenId);
         return true;
     }
 }
