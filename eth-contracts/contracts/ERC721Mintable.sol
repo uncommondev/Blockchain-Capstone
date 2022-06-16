@@ -16,25 +16,30 @@ contract Ownable {
 
     address private _owner;
 
+    function owner() public view returns (address) {
+        return _owner;
+    }
+
     constructor () internal {
         _owner = msg.sender;
+        emit ownerShip(_owner);
     }
 
     modifier onlyOwner {
         require(_owner == msg.sender);
         _;
-    }
+    } 
+
+    event ownerShip(address _owner);
 
     function transferOwnership(address newOwner) public onlyOwner {
         // TODO add functionality to transfer control of the contract to a newOwner.
         // make sure the new owner is a real address
         require(newOwner != address(0));
         _owner = newOwner;
-        emit OwnershipTransferred(msg.sender, _owner);
+        emit ownerShip(_owner);
 
     }
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 }
 
 //  TODO's: Create a Pausable contract that inherits from the Ownable contract
@@ -249,8 +254,8 @@ contract ERC721 is Pausable, ERC165 {
     function _mint(address to, uint256 tokenId) internal {
 
         // TODO revert if given tokenId already exists or given address is invalid
-        require(!_exists(tokenId));
-        require(to != address(0));
+        require(!_exists(tokenId), "Token already exists");
+        require(to != address(0), "Address is invalid");
   
         // TODO mint tokenId to given address & increase token count of owner
         _tokenOwner[tokenId] = to;
@@ -268,13 +273,15 @@ contract ERC721 is Pausable, ERC165 {
         require(from == _tokenOwner[tokenId]);
 
         // TODO: require token is being transfered to valid address
-        require(to != address(0));
+        require(to != address(0), "Invalid address");
         
         // TODO: clear approval
-        _tokenApprovals[tokenId] = address(0);
+        _clearApproval(tokenId);
 
         // TODO: update token counts & transfer ownership of the token ID
-        _tokenOwner[tokenId] = to; 
+        _tokenOwner[tokenId] = to;
+        _ownedTokensCount[from].decrement();
+        _ownedTokensCount[to].increment();
 
         // TODO: emit correct event
         emit Transfer(from, to, tokenId);
@@ -522,7 +529,7 @@ contract ERC721Metadata is ERC721Enumerable, usingOraclize {
     }
 
     function tokenURI(uint256 tokenId) external view returns (string memory) {
-        require(_exists(tokenId));
+        require(_exists(tokenId), "ERC721: token does not exist.");
         return _tokenURIs[tokenId];
     }
 
@@ -535,7 +542,7 @@ contract ERC721Metadata is ERC721Enumerable, usingOraclize {
     // require the token exists before setting
 
     function setTokenURI(uint256 tokenId) internal {
-        require(_exists(tokenId));
+        require(_exists(tokenId), "Token does not exist");
         _tokenURIs[tokenId] = strConcat(_baseTokenURI, uint2str(tokenId));
     }
 
